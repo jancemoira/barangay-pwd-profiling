@@ -7,7 +7,6 @@ import { createClient } from '@/lib/supabase/client'
 const navItems = [
   { href: '/database',  label: 'Database',  icon: Database  },
   { href: '/reports',   label: 'Reports',   icon: FileText  },
-  { href: '/analytics', label: 'Analytics', icon: BarChart2 },
 ]
 
 export default function Sidebar({ userEmail }: { userEmail: string }) {
@@ -27,12 +26,16 @@ export default function Sidebar({ userEmail }: { userEmail: string }) {
     <aside className="w-[200px] bg-white border-r border-gray-100 flex flex-col flex-shrink-0 h-screen">
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-5 py-5 border-b border-gray-50">
-        <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center text-base shadow-sm flex-shrink-0">
-          ♿
+        <div className="w-11 h-11 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0 overflow-hidden">
+          <img
+            src="/logos/BRGY-10.png"
+            alt="Logo"
+            className="w-full h-full object-hidden"
+          />
         </div>
         <div>
-          <div className="font-bold text-sm text-gray-900 leading-tight">PWD Brgy 10</div>
-          <div className="text-[10px] text-gray-400 leading-tight">Bacolod City</div>
+          <div className="font-bold text-sm text-gray-900 leading-tight">PWD Profiling</div>
+          <div className="text-[10px] text-gray-400 leading-tight">Barangay 10</div>
         </div>
       </div>
 
@@ -46,7 +49,7 @@ export default function Sidebar({ userEmail }: { userEmail: string }) {
               href={href}
               className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                 active
-                  ? 'bg-green-50 text-green-700 font-semibold'
+                  ? 'bg-yellow-50 text-[#948c00] font-semibold'
                   : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'
               }`}
             >
@@ -61,22 +64,11 @@ export default function Sidebar({ userEmail }: { userEmail: string }) {
       <div className="px-3 pb-4 border-t border-gray-100 pt-3">
         {/* User chip */}
         <div className="flex items-center gap-2 px-3 py-2 mb-1 rounded-xl bg-gray-50">
-          <div className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center text-[11px] font-bold text-green-700 flex-shrink-0">
+          <div className="w-7 h-7 rounded-full bg-yellow-100 flex items-center justify-center text-[11px] font-bold text-[#948c00] flex-shrink-0">
             {initials}
           </div>
           <div className="text-xs text-gray-500 truncate flex-1 min-w-0">{userEmail}</div>
         </div>
-
-        <Link
-          href="/settings"
-          className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-            pathname.startsWith('/settings')
-              ? 'bg-green-50 text-green-700 font-semibold'
-              : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'
-          }`}
-        >
-          <Settings size={15} /> Settings
-        </Link>
 
         <button
           onClick={handleLogout}

@@ -51,16 +51,40 @@ export default function ReportsClient({ records, fetchError }: Props) {
   const printGroup = yearGroups.find(g => g.year === printYear)
 
   function handlePrint() {
-    const area = document.getElementById('print-area')
-    if (!area || !printRef.current) return
-    area.innerHTML = printRef.current.innerHTML
-    area.style.display = 'block'
-    window.print()
-    setTimeout(() => {
-      area.innerHTML = ''
-      area.style.display = 'none'
-    }, 1500)
-  }
+  const printContent = printRef.current;
+  if (!printContent) return;
+
+  // Create a temporary iframe or use a new window to isolate the styles
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) return;
+
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>PWD Masterlist - ${printYear}</title>
+        <style>
+          @page { size: landscape; margin: 10mm; }
+          body { margin: 0; padding: 0; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          table { width: 100%; border-collapse: collapse; }
+          th, td { border: 1px solid #333 !important; }
+        </style>
+      </head>
+      <body>
+        ${printContent.innerHTML}
+      </body>
+    </html>
+  `);
+
+  printWindow.document.close();
+  printWindow.focus();
+  
+  // Give images time to load before printing
+  setTimeout(() => {
+    printWindow.print();
+    printWindow.close();
+  }, 500);
+}
 
   const fileIndex = (year: string) => {
     const idx = yearGroups.findIndex(g => g.year === year)
@@ -78,7 +102,7 @@ export default function ReportsClient({ records, fetchError }: Props) {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search year or report name…"
-              className="w-full pl-8 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-green-500 focus:bg-white transition-colors"
+              className="w-full pl-8 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#948c00] focus:bg-white transition-colors"
             />
           </div>
           <button
@@ -126,20 +150,20 @@ export default function ReportsClient({ records, fetchError }: Props) {
                 className="grid grid-cols-[2fr_2fr_2fr_160px] px-5 py-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/60 transition-colors items-center"
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-gray-300">📄</span>
+                  <span className="text-gray-300"></span>
                   <span className="text-sm font-semibold text-gray-800">
-                    yearly-{fileIndex(group.year)}
+                    year-{fileIndex(group.year)}
                   </span>
                 </div>
                 <div className="text-sm text-gray-500">Barangay 10, Bacolod City</div>
                 <div className="text-sm text-gray-500">{group.lastEncoded}</div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                  <span className="text-xs font-bold bg-yellow-100 text-[#948c00] px-2 py-0.5 rounded-full">
                     {group.records.length} PWD
                   </span>
                   <button
                     onClick={() => setPrintYear(group.year)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-sm font-semibold text-gray-600 hover:border-green-400 hover:text-green-700 hover:bg-green-50 transition-all"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-sm font-semibold text-gray-600 hover:border-yellow-400 hover:text-[#948c00] hover:bg-yellow-100 transition-all"
                   >
                     <Printer size={13} /> Print
                   </button>
@@ -161,14 +185,14 @@ export default function ReportsClient({ records, fetchError }: Props) {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl my-4 overflow-hidden">
             {/* Toolbar */}
-            <div className="flex items-center justify-between px-5 py-3.5 bg-gray-900 text-white flex-shrink-0">
+            <div className="flex items-center justify-between px-5 py-3.5 bg-gray-600 text-white flex-shrink-0">
               <span className="text-sm font-semibold">
-                📄 PWD Masterlist – {printYear} &nbsp;·&nbsp; {printGroup.records.length} Records
+                PWD Masterlist – {printYear} &nbsp;·&nbsp; {printGroup.records.length} Records
               </span>
               <div className="flex gap-2">
                 <button
                   onClick={handlePrint}
-                  className="flex items-center gap-1.5 px-4 py-1.5 bg-green-500 hover:bg-green-600 rounded-lg text-sm font-bold transition-colors"
+                  className="flex items-center gap-1.5 px-4 py-1.5 bg-yellow-100 hover:bg-yellow-200 rounded-lg text-sm text-[#948c00] font-bold transition-colors"
                 >
                   <Printer size={13} /> Print
                 </button>
@@ -209,18 +233,33 @@ function MasterlistDoc({ year, records }: { year: string; records: PwdProfile[] 
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginBottom: 8 }}>
-          {['🏛️', '♿', '🏙️'].map((e, i) => (
+          {[
+            '/logos/PDAO.png',
+            '/logos/DSWD.jpg',
+            '/logos/BCD.jpg', 
+          ].map((logoSrc, i) => (
             <div key={i} style={{
-              width: 54, height: 54, borderRadius: '50%', border: '2px solid #999',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22,
-            }}>{e}</div>
+              width: 54, height: 54, borderRadius: '50%', border: '2px solid #ffffff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              overflow: 'hidden', backgroundColor: '#fff'
+            }}>
+              <img
+                src={logoSrc}
+                alt={`Logo ${i + 1}`}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'contain'
+                }}
+              />
+            </div>
           ))}
         </div>
         <div style={{ fontSize: 11, fontWeight: 'bold' }}>
           Person with Disability (PDAO) Office, Bacolod City
         </div>
         <div style={{ fontSize: 13, fontWeight: 'bold', textDecoration: 'underline', marginTop: 2 }}>
-          PWD MASTERLIST FORM – {year}
+          PWD MASTERLIST FORM
         </div>
       </div>
 
@@ -249,10 +288,12 @@ function MasterlistDoc({ year, records }: { year: string; records: PwdProfile[] 
             <th colSpan={2} style={thStyle()}>Gender</th>
             <th rowSpan={2} style={thStyle()}>DOB</th>
             <th rowSpan={2} style={thStyle()}>Civil Status</th>
+            <th rowSpan={2} style={thStyle()}>Educational Attainment</th>
             <th rowSpan={2} style={thStyle()}>Employment Status</th>
             <th rowSpan={2} style={thStyle()}>Monthly Income</th>
             <th rowSpan={2} style={thStyle()}>Type of Disability</th>
             <th rowSpan={2} style={thStyle()}>PWD ID Number</th>
+            <th rowSpan={2} style={thStyle()}>Contact Number</th>
             <th rowSpan={2} style={thStyle()}>Remarks</th>
           </tr>
           <tr>
@@ -280,6 +321,7 @@ function MasterlistDoc({ year, records }: { year: string; records: PwdProfile[] 
               <td style={tdStyle({ textAlign: 'center' })}>{r?.sex === 'Female' ? '✓' : ''}</td>
               <td style={tdStyle({ fontSize: 6.5 })}>{r?.date_of_birth ?? ''}</td>
               <td style={tdStyle({ fontSize: 6.5 })}>{r?.civil_status ?? ''}</td>
+              <td style={tdStyle({ fontSize: 6.5 })}>{r?.educational_attainment ?? ''}</td>
               <td style={tdStyle({ fontSize: 6.5 })}>{r?.employment_status ?? ''}</td>
               <td style={tdStyle({ fontSize: 6.5 })}>
                 {r?.monthly_income != null ? `₱${r.monthly_income.toLocaleString()}` : ''}
@@ -288,7 +330,8 @@ function MasterlistDoc({ year, records }: { year: string; records: PwdProfile[] 
                 {(r?.disability_type ?? []).join('; ')}
               </td>
               <td style={tdStyle({ fontSize: 6.5 })}>{r?.pwd_id_number ?? ''}</td>
-              <td style={tdStyle()}></td>
+              <td style={tdStyle({ fontSize: 6.5 })}>{r?.contact_number ?? ''}</td>
+              <td style={tdStyle()}>{r?.remarks ?? ''}</td>
             </tr>
           ))}
         </tbody>

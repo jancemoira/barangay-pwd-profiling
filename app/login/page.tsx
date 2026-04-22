@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import Image from 'next/image'
 
 
 export default function LoginPage() {
@@ -27,13 +28,17 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-white flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-white flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-green-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-            <span className="text-3xl">♿</span>
-          </div>
+         <div className="w-16 h-16 bg-yellow-100 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+          <img
+            src="/logos/BRGY-10.png"
+            alt="Logo"
+            style={{ width: 40, height: 40, objectFit: 'contain' }}
+          />
+        </div>
           <h1 className="text-2xl font-bold text-gray-900">PWD Registry</h1>
           <p className="text-gray-500 text-sm mt-1">Barangay 10 · Bacolod City</p>
         </div>
@@ -52,7 +57,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="staff@barangay10.gov.ph"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-green-500 bg-gray-50 focus:bg-white transition-colors"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#948c00] bg-gray-50 focus:bg-white transition-colors"
               />
             </div>
             <div>
@@ -65,7 +70,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-green-500 bg-gray-50 focus:bg-white transition-colors"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#948c00] bg-gray-50 focus:bg-white transition-colors"
               />
             </div>
             {error && (
@@ -76,7 +81,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-green-500 hover:bg-green-600 disabled:opacity-60 text-white font-bold py-2.5 rounded-lg text-sm transition-colors mt-2"
+              className="w-full bg-yellow-100 hover:bg-yellow-200 disabled:opacity-60 text-[#948c00] font-bold py-2.5 rounded-lg text-sm transition-colors mt-2"
             >
               {loading ? 'Signing in…' : 'Sign In'}
             </button>

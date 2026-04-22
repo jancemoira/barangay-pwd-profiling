@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import type { PwdProfile } from '@/types'
+import { createClient } from '@/lib/supabase/client'
 
 interface Props {
   record: PwdProfile
@@ -10,11 +11,29 @@ interface Props {
 
 export default function DeleteModal({ record, onClose, onConfirm }: Props) {
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const supabase = createClient()
 
   async function handle() {
     setLoading(true)
-    await onConfirm()
-    setLoading(false)
+    setError(null)
+
+    try {
+      const { error: dbError } = await supabase
+        .from('pwd_profiles')
+        .delete()
+        .eq('id', record.id)
+
+      if (dbError) throw dbError
+
+      await onConfirm()
+      onClose()
+    } catch (err: any) {
+      console.error('Error deleting record:', err.message)
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (

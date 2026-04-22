@@ -88,8 +88,8 @@ export default function DatabaseClient({ initialRecords, fetchError }: Props) {
   function SortIcon({ col }: { col: SortKey }) {
     if (sortKey !== col) return <ArrowUpDown size={11} className="text-gray-300 ml-1" />
     return sortDir === 'asc'
-      ? <ChevronUp size={11} className="text-green-600 ml-1" />
-      : <ChevronDown size={11} className="text-green-600 ml-1" />
+      ? <ChevronUp size={11} className="text-[#948c00] ml-1" />
+      : <ChevronDown size={11} className="text-[#948c00] ml-1" />
   }
 
   function showToast(msg: string, type: 'success' | 'error' = 'success') {
@@ -130,8 +130,8 @@ export default function DatabaseClient({ initialRecords, fetchError }: Props) {
   }
 
   const avColors = [
-    'bg-green-100 text-green-700', 'bg-blue-100 text-blue-700',
-    'bg-pink-100 text-pink-700',   'bg-yellow-100 text-yellow-700',
+    'bg-yellow-100 text-[#948c00]', 'bg-blue-100 text-blue-700',
+    'bg-pink-100 text-pink-700',   
     'bg-purple-100 text-purple-700','bg-orange-100 text-orange-700',
   ]
   function avColor(r: PwdProfile) { return avColors[r.full_name_last.charCodeAt(0) % avColors.length] }
@@ -156,20 +156,20 @@ export default function DatabaseClient({ initialRecords, fetchError }: Props) {
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1) }}
             placeholder="Search name, PWD ID, disability…"
-            className="w-full pl-8 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-full text-sm focus:outline-none focus:border-green-500 focus:bg-white transition-colors"
+            className="w-full pl-8 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#948c00] focus:bg-white transition-colors"
           />
         </div>
         <div className="ml-auto flex items-center gap-2">
           <button
             onClick={() => setFilterPanel(p => !p)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-semibold transition-colors ${filterPanel || filterSex || filterEmp ? 'border-green-400 bg-green-50 text-green-700' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-semibold transition-colors ${filterPanel || filterSex || filterEmp ? 'border-yellow-100 bg-yellow-50 text-[#948c00]' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}`}
           >
             <SlidersHorizontal size={13} />
             Filter {(filterSex || filterEmp) ? '●' : ''}
           </button>
           <button
             onClick={() => { setEditRecord(null); setFormOpen(true) }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500 hover:bg-green-600 text-white text-sm font-bold transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-yellow-100 hover:bg-yellow-200 text-[#948c00] text-sm font-bold transition-colors"
           >
             <Plus size={13} /> Add PWD
           </button>
@@ -184,7 +184,7 @@ export default function DatabaseClient({ initialRecords, fetchError }: Props) {
             <span className="text-xs text-gray-500 font-medium">Sex</span>
             {['', 'Male', 'Female'].map(v => (
               <button key={v} onClick={() => { setFilterSex(v); setPage(1) }}
-                className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${filterSex === v ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${filterSex === v ? 'bg-yellow-100 text-[#948c00]' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
                 {v || 'All'}
               </button>
             ))}
@@ -193,7 +193,7 @@ export default function DatabaseClient({ initialRecords, fetchError }: Props) {
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-500 font-medium">Employment</span>
             <select value={filterEmp} onChange={e => { setFilterEmp(e.target.value); setPage(1) }}
-              className="border border-gray-200 rounded-lg px-2 py-1 text-xs bg-gray-50 focus:outline-none focus:border-green-500">
+              className="border border-gray-200 rounded-lg px-2 py-1 text-xs bg-gray-50 focus:outline-none focus:border-yellow-500">
               <option value="">All</option>
               {empOptions.map(o => <option key={o}>{o}</option>)}
             </select>
@@ -213,7 +213,7 @@ export default function DatabaseClient({ initialRecords, fetchError }: Props) {
         <div className="flex-1 flex flex-col overflow-hidden p-5 pb-0">
           <div className="flex items-center justify-between mb-3">
             <h1 className="text-2xl font-bold text-gray-900" style={{ fontFamily: "'DM Serif Display', serif" }}>
-              Database
+              Records
             </h1>
             <span className="text-xs text-gray-400">{processed.length} record{processed.length !== 1 ? 's' : ''}</span>
           </div>
@@ -224,10 +224,10 @@ export default function DatabaseClient({ initialRecords, fetchError }: Props) {
               <button
                 key={t.key}
                 onClick={() => { setActiveTab(t.key); setPage(1) }}
-                className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${activeTab === t.key ? 'border-green-500 text-green-700 font-semibold' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${activeTab === t.key ? 'border-yellow-500 text-[#948c00] font-semibold' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
               >
                 {t.label}
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeTab === t.key ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeTab === t.key ? 'bg-yellow-100 text-[#948c00]' : 'bg-gray-100 text-gray-400'}`}>
                   {t.count}
                 </span>
               </button>
@@ -257,7 +257,7 @@ export default function DatabaseClient({ initialRecords, fetchError }: Props) {
                     <th
                       key={label}
                       onClick={() => col && toggleSort(col)}
-                      className={`text-left text-xs font-semibold text-gray-400 pb-2.5 px-3 border-b border-gray-100 whitespace-nowrap select-none ${col ? 'cursor-pointer hover:text-gray-600' : ''}`}
+                      className={`text-left text-xs font-semibold text-gray-400 pt-4 pb-3 px-3 border-b border-gray-100 whitespace-nowrap select-none ${col ? 'cursor-pointer hover:text-gray-600' : ''}`}
                     >
                       <span className="inline-flex items-center">
                         {label}
@@ -283,19 +283,24 @@ export default function DatabaseClient({ initialRecords, fetchError }: Props) {
                     <tr
                       key={r.id}
                       onClick={() => handleRowClick(r)}
-                      className={`cursor-pointer border-b border-gray-100 transition-colors ${sel ? 'bg-green-500' : 'hover:bg-gray-50'}`}
+                      className={`cursor-pointer border-b border-gray-100 transition-colors ${sel ? 'bg-gray-500' : 'hover:bg-gray-50'}`}
                     >
                       <td className="px-3 py-2.5">
                         <div className="flex items-center gap-2">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${sel ? 'bg-white/20 text-white' : avColor(r)}`}>
-                            {initials(r)}
+                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 overflow-hidden ${sel ? 'bg-white/20 text-white' : avColor(r)}`}>
+                            {r.photo_url ? (
+                              <img 
+                                src={r.photo_url} 
+                                alt="" 
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              initials(r)
+                            )}
                           </div>
                           <div>
                             <div className={`text-sm font-medium leading-tight ${sel ? 'text-white' : 'text-gray-900'}`}>
                               {r.full_name_last}, {r.full_name_first}
-                            </div>
-                            <div className={`text-xs leading-tight ${sel ? 'text-white/70' : 'text-gray-400'}`}>
-                              {r.full_name_middle ?? ''}
                             </div>
                           </div>
                         </div>
@@ -306,12 +311,12 @@ export default function DatabaseClient({ initialRecords, fetchError }: Props) {
                       <td className="px-3 py-2.5">
                         <div className="flex flex-wrap gap-1">
                           {(r.disability_type ?? []).slice(0, 1).map(d => (
-                            <span key={d} className={`text-xs font-semibold px-2 py-0.5 rounded-md ${sel ? 'bg-white/20 text-white' : 'bg-green-100 text-green-700'}`}>
+                            <span key={d} className={`text-xs font-semibold px-2 py-0.5 rounded-md ${sel ? 'bg-white/20 text-white' : 'bg-yellow-100 text-[#948c00]'}`}>
                               {d}
                             </span>
                           ))}
                           {(r.disability_type ?? []).length > 1 && (
-                            <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-md ${sel ? 'bg-white/20 text-white' : 'bg-green-100 text-green-700'}`}>
+                            <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-md ${sel ? 'bg-white/20 text-white' : 'bg-yellow-100 text-[#948c00]'}`}>
                               +{r.disability_type!.length - 1}
                             </span>
                           )}
@@ -396,7 +401,7 @@ export default function DatabaseClient({ initialRecords, fetchError }: Props) {
 
       {/* ── Toast ── */}
       {toast && (
-        <div className={`fixed bottom-5 left-1/2 -translate-x-1/2 px-5 py-2.5 rounded-full text-sm font-medium text-white shadow-lg z-[100] border-l-4 ${toast.type === 'error' ? 'bg-gray-900 border-red-500' : 'bg-gray-900 border-green-500'}`}>
+        <div className={`fixed bottom-5 left-1/2 -translate-x-1/2 px-5 py-2.5 rounded-full text-sm font-medium text-white shadow-lg z-[100] border-l-4 ${toast.type === 'error' ? 'bg-gray-900 border-red-500' : 'bg-gray-900 border-[#948c00]'}`}>
           {toast.msg}
         </div>
       )}
