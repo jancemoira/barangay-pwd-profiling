@@ -227,12 +227,12 @@ export default function DatabaseClient({ initialRecords, fetchError }: Props) {
 
       {/* ── Filter & Batch Action Bar ── */}
       {selectedIds.size > 0 ? (
-        <div className="bg-[#948c00] px-6 py-2 flex items-center justify-between animate-in slide-in-from-top duration-200">
+        <div className="bg-yellow-100 px-6 py-2 flex items-center justify-between animate-in slide-in-from-top duration-200">
           <div className="flex items-center gap-4">
-            <button onClick={() => setSelectedIds(new Set())} className="text-white hover:bg-white/10 p-1 rounded">
+            <button onClick={() => setSelectedIds(new Set())} className="text-[#948c00] hover:bg-white/10 p-1 rounded">
               <X size={16} />
             </button>
-            <span className="text-sm font-bold text-white">{selectedIds.size} records selected</span>
+            <span className="text-sm font-bold text-[#948c00]">{selectedIds.size} records selected</span>
           </div>
           <button onClick={handleBatchDelete} className="flex items-center gap-1.5 bg-white text-red-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-50 transition-colors">
             <Trash2 size={13} /> Delete Selection
