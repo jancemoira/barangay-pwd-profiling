@@ -61,7 +61,7 @@ export default function DetailPanel({ record, avColor, initials, onEdit, onDelet
            <img 
               src={r.photo_url} 
               alt="" 
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover rounded-full"
             />
             ) : (
             initials(r)

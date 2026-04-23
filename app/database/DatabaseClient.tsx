@@ -1,6 +1,6 @@
 'use client'
 import { useState, useMemo } from 'react'
-import { Search, SlidersHorizontal, Plus, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react'
+import { Search, SlidersHorizontal, Plus, ArrowUpDown, ChevronUp, ChevronDown, Trash2, X } from 'lucide-react'
 import type { PwdProfile } from '@/types'
 import DetailPanel from '@/components/DetailPanel'
 import PwdFormModal from '@/components/PwdFormModal'
@@ -15,7 +15,22 @@ interface Props {
 
 type SortKey = 'name' | 'age' | 'sex' | 'employment' | 'encoded'
 type SortDir = 'asc' | 'desc'
-type TabKey  = 'all' | 'withId' | 'noId'
+type TabKey  = 'all' | 'thisWeek' | 'thisMonth'
+
+const disabilityOptions = [
+  'Physical Orthopedic',
+  'Psychosocial Disability',
+  'Intellectual Disability',
+  'Speech Language Impairment',
+  'Learning Disability',
+  'Visual Disability',
+  'Mental Disability',
+  'Cancer (RA 11215)',
+  'Deaf or Hard of Hearing',
+  'Rare Disease (RA10747)',
+]
+
+const empOptions = ['Employed','Self-Employed','Unemployed','Student','Retired']
 
 export default function DatabaseClient({ initialRecords, fetchError }: Props) {
   const [records,      setRecords]      = useState<PwdProfile[]>(initialRecords)
@@ -25,6 +40,7 @@ export default function DatabaseClient({ initialRecords, fetchError }: Props) {
   const [sortDir,      setSortDir]      = useState<SortDir>('desc')
   const [filterSex,    setFilterSex]    = useState('')
   const [filterEmp,    setFilterEmp]    = useState('')
+  const [filterDis,    setFilterDis]    = useState('')
   const [filterPanel,  setFilterPanel]  = useState(false)
   const [selectedId,   setSelectedId]   = useState<string | null>(null)
   const [formOpen,     setFormOpen]     = useState(false)
@@ -33,32 +49,45 @@ export default function DatabaseClient({ initialRecords, fetchError }: Props) {
   const [deleteRecord, setDeleteRecord] = useState<PwdProfile | null>(null)
   const [toast,        setToast]        = useState<{ msg: string; type?: 'success' | 'error' } | null>(null)
   const [page,         setPage]         = useState(1)
+  
+  const [selectedIds,  setSelectedIds]  = useState<Set<string>>(new Set())
+  
   const PAGE_SIZE = 20
-
   const supabase = createClient()
+
+  // ── Date Helpers for Tabs ─────────────────────────────────────
+  const isThisWeek = (dateStr: string) => {
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diff = now.getTime() - date.getTime()
+    return diff <= 7 * 24 * 60 * 60 * 1000
+  }
+
+  const isThisMonth = (dateStr: string) => {
+    const date = new Date(dateStr)
+    const now = new Date()
+    return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()
+  }
 
   // ── Derived list ──────────────────────────────────────────────
   const processed = useMemo(() => {
     const q = search.toLowerCase()
 
-    // 1. tab filter
     let list = records.filter(r => {
-      if (activeTab === 'withId') return !!r.pwd_id_number
-      if (activeTab === 'noId')   return !r.pwd_id_number
+      if (activeTab === 'thisWeek')  return isThisWeek(r.created_at)
+      if (activeTab === 'thisMonth') return isThisMonth(r.created_at)
       return true
     })
 
-    // 2. search
     if (q) list = list.filter(r =>
       [r.full_name_first, r.full_name_last, r.full_name_middle,
        r.pwd_id_number, ...(r.disability_type ?? [])].join(' ').toLowerCase().includes(q)
     )
 
-    // 3. filters
     if (filterSex) list = list.filter(r => r.sex === filterSex)
     if (filterEmp) list = list.filter(r => r.employment_status === filterEmp)
+    if (filterDis) list = list.filter(r => r.disability_type?.includes(filterDis))
 
-    // 4. sort
     list = [...list].sort((a, b) => {
       let av = '', bv = ''
       if (sortKey === 'name')       { av = a.full_name_last;     bv = b.full_name_last }
@@ -74,15 +103,42 @@ export default function DatabaseClient({ initialRecords, fetchError }: Props) {
     })
 
     return list
-  }, [records, search, activeTab, sortKey, sortDir, filterSex, filterEmp])
+  }, [records, search, activeTab, sortKey, sortDir, filterSex, filterEmp, filterDis])
 
   const totalPages = Math.max(1, Math.ceil(processed.length / PAGE_SIZE))
   const paged = processed.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
   const selected = records.find(r => r.id === selectedId) ?? null
 
+  // ── Handlers ──────────────────────────────────────────────────
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
     else { setSortKey(key); setSortDir('asc') }
+  }
+
+  function toggleRowSelection(id: string) {
+    const next = new Set(selectedIds)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    setSelectedIds(next)
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.size === paged.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(paged.map(r => r.id)))
+    }
+  }
+
+  async function handleBatchDelete() {
+    if (!confirm(`Are you sure you want to delete ${selectedIds.size} records?`)) return
+    const idsArray = Array.from(selectedIds)
+    const { error } = await supabase.from('pwd_profiles').delete().in('id', idsArray)
+    if (error) { showToast(error.message, 'error'); return }
+    setRecords(prev => prev.filter(r => !selectedIds.has(r.id)))
+    setSelectedIds(new Set())
+    if (selectedId && selectedIds.has(selectedId)) setSelectedId(null)
+    showToast(`${idsArray.length} records deleted successfully.`)
   }
 
   function SortIcon({ col }: { col: SortKey }) {
@@ -129,25 +185,18 @@ export default function DatabaseClient({ initialRecords, fetchError }: Props) {
     showToast('Record deleted.')
   }
 
-  const avColors = [
-    'bg-yellow-100 text-[#948c00]', 'bg-blue-100 text-blue-700',
-    'bg-pink-100 text-pink-700',   
-    'bg-purple-100 text-purple-700','bg-orange-100 text-orange-700',
-  ]
+  const avColors = ['bg-yellow-100 text-[#948c00]', 'bg-blue-100 text-blue-700', 'bg-pink-100 text-pink-700', 'bg-purple-100 text-purple-700','bg-orange-100 text-orange-700']
   function avColor(r: PwdProfile) { return avColors[r.full_name_last.charCodeAt(0) % avColors.length] }
   function initials(r: PwdProfile) { return (r.full_name_last[0] + r.full_name_first[0]).toUpperCase() }
 
   const tabs: { key: TabKey; label: string; count: number }[] = [
-    { key: 'all',    label: 'All Records', count: records.length },
-    { key: 'withId', label: 'With PWD ID', count: records.filter(r => !!r.pwd_id_number).length },
-    { key: 'noId',   label: 'No ID Yet',   count: records.filter(r => !r.pwd_id_number).length },
+    { key: 'all',       label: 'All Records', count: records.length },
+    { key: 'thisWeek',  label: 'This Week',   count: records.filter(r => isThisWeek(r.created_at)).length },
+    { key: 'thisMonth', label: 'This Month',  count: records.filter(r => isThisMonth(r.created_at)).length },
   ]
-
-  const empOptions = ['Employed','Self-Employed','Unemployed','Student','Retired']
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-
       {/* ── Topbar ── */}
       <div className="bg-white border-b border-gray-100 px-6 h-[58px] flex items-center gap-3 flex-shrink-0">
         <div className="relative max-w-[300px] w-full">
@@ -162,10 +211,10 @@ export default function DatabaseClient({ initialRecords, fetchError }: Props) {
         <div className="ml-auto flex items-center gap-2">
           <button
             onClick={() => setFilterPanel(p => !p)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-semibold transition-colors ${filterPanel || filterSex || filterEmp ? 'border-yellow-100 bg-yellow-50 text-[#948c00]' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-semibold transition-colors ${filterPanel || filterSex || filterEmp || filterDis ? 'border-yellow-100 bg-yellow-50 text-[#948c00]' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}`}
           >
             <SlidersHorizontal size={13} />
-            Filter {(filterSex || filterEmp) ? '●' : ''}
+            Filter {(filterSex || filterEmp || filterDis) ? '●' : ''}
           </button>
           <button
             onClick={() => { setEditRecord(null); setFormOpen(true) }}
@@ -176,15 +225,26 @@ export default function DatabaseClient({ initialRecords, fetchError }: Props) {
         </div>
       </div>
 
-      {/* ── Filter Bar ── */}
-      {filterPanel && (
+      {/* ── Filter & Batch Action Bar ── */}
+      {selectedIds.size > 0 ? (
+        <div className="bg-[#948c00] px-6 py-2 flex items-center justify-between animate-in slide-in-from-top duration-200">
+          <div className="flex items-center gap-4">
+            <button onClick={() => setSelectedIds(new Set())} className="text-white hover:bg-white/10 p-1 rounded">
+              <X size={16} />
+            </button>
+            <span className="text-sm font-bold text-white">{selectedIds.size} records selected</span>
+          </div>
+          <button onClick={handleBatchDelete} className="flex items-center gap-1.5 bg-white text-red-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-50 transition-colors">
+            <Trash2 size={13} /> Delete Selection
+          </button>
+        </div>
+      ) : filterPanel && (
         <div className="bg-white border-b border-gray-100 px-6 py-3 flex items-center gap-4">
           <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Filter by:</span>
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-500 font-medium">Sex</span>
             {['', 'Male', 'Female'].map(v => (
-              <button key={v} onClick={() => { setFilterSex(v); setPage(1) }}
-                className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${filterSex === v ? 'bg-yellow-100 text-[#948c00]' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+              <button key={v} onClick={() => { setFilterSex(v); setPage(1) }} className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${filterSex === v ? 'bg-yellow-100 text-[#948c00]' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
                 {v || 'All'}
               </button>
             ))}
@@ -192,15 +252,21 @@ export default function DatabaseClient({ initialRecords, fetchError }: Props) {
           <div className="w-px h-4 bg-gray-200" />
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-500 font-medium">Employment</span>
-            <select value={filterEmp} onChange={e => { setFilterEmp(e.target.value); setPage(1) }}
-              className="border border-gray-200 rounded-lg px-2 py-1 text-xs bg-gray-50 focus:outline-none focus:border-yellow-500">
+            <select value={filterEmp} onChange={e => { setFilterEmp(e.target.value); setPage(1) }} className="border border-gray-200 rounded-lg px-2 py-1 text-xs bg-gray-50 focus:outline-none focus:border-yellow-500">
               <option value="">All</option>
               {empOptions.map(o => <option key={o}>{o}</option>)}
             </select>
           </div>
-          {(filterSex || filterEmp) && (
-            <button onClick={() => { setFilterSex(''); setFilterEmp('') }}
-              className="ml-auto text-xs text-red-500 hover:text-red-700 font-semibold">
+          <div className="w-px h-4 bg-gray-200" />
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500 font-medium">Disability</span>
+            <select value={filterDis} onChange={e => { setFilterDis(e.target.value); setPage(1) }} className="border border-gray-200 rounded-lg px-2 py-1 text-xs bg-gray-50 focus:outline-none focus:border-yellow-500 max-w-[150px]">
+              <option value="">All Types</option>
+              {disabilityOptions.map(o => <option key={o} value={o}>{o}</option>)}
+            </select>
+          </div>
+          {(filterSex || filterEmp || filterDis) && (
+            <button onClick={() => { setFilterSex(''); setFilterEmp(''); setFilterDis('') }} className="ml-auto text-xs text-red-500 hover:text-red-700 font-semibold">
               Clear filters
             </button>
           )}
@@ -208,16 +274,12 @@ export default function DatabaseClient({ initialRecords, fetchError }: Props) {
       )}
 
       <div className="flex flex-1 overflow-hidden">
-
         {/* ── Table Panel ── */}
         <div className="flex-1 flex flex-col overflow-hidden p-5 pb-0">
           <div className="flex items-center justify-between mb-3">
-            <h1 className="text-2xl font-bold text-gray-900" style={{ fontFamily: "'DM Serif Display', serif" }}>
-              Records
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-900" style={{ fontFamily: "'DM Serif Display', serif" }}>Records</h1>
             <span className="text-xs text-gray-400">{processed.length} record{processed.length !== 1 ? 's' : ''}</span>
           </div>
-
           {/* Tabs */}
           <div className="flex border-b border-gray-200 mb-4 gap-0">
             {tabs.map(t => (
@@ -233,104 +295,58 @@ export default function DatabaseClient({ initialRecords, fetchError }: Props) {
               </button>
             ))}
           </div>
-
-          {fetchError && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-4">
-              Error loading records: {fetchError}
-            </div>
-          )}
-
-          {/* Table */}
           <div className="flex-1 overflow-y-auto">
             <table className="w-full border-collapse">
               <thead className="sticky top-0 bg-white z-10">
                 <tr>
+                  <th className="w-10 px-3 pt-4 pb-3 border-b border-gray-100 text-left">
+                    <input type="checkbox" className="rounded border-gray-300 text-[#948c00] focus:ring-[#948c00]" checked={paged.length > 0 && selectedIds.size === paged.length} onChange={toggleSelectAll} />
+                  </th>
                   {([
                     { label: 'Name',       col: 'name'       as SortKey },
-                    { label: 'PWD ID',     col: null                    },
-                    { label: 'Disability', col: null                    },
-                    { label: 'Age',        col: 'age'        as SortKey },
-                    { label: 'Sex',        col: 'sex'        as SortKey },
+                    { label: 'PWD ID',     col: null                        },
+                    { label: 'Disability', col: null                        },
+                    { label: 'Age',         col: 'age'        as SortKey },
+                    { label: 'Sex',         col: 'sex'        as SortKey },
                     { label: 'Employment', col: 'employment' as SortKey },
-                    { label: 'Encoded',    col: 'encoded'    as SortKey },
+                    { label: 'Encoded',     col: 'encoded'    as SortKey },
                   ] as const).map(({ label, col }) => (
-                    <th
-                      key={label}
-                      onClick={() => col && toggleSort(col)}
-                      className={`text-left text-xs font-semibold text-gray-400 pt-4 pb-3 px-3 border-b border-gray-100 whitespace-nowrap select-none ${col ? 'cursor-pointer hover:text-gray-600' : ''}`}
-                    >
-                      <span className="inline-flex items-center">
-                        {label}
-                        {col && <SortIcon col={col} />}
-                      </span>
+                    <th key={label} onClick={() => col && toggleSort(col)} className={`text-left text-xs font-semibold text-gray-400 pt-4 pb-3 px-3 border-b border-gray-100 whitespace-nowrap select-none ${col ? 'cursor-pointer hover:text-gray-600' : ''}`}>
+                      <span className="inline-flex items-center">{label}{col && <SortIcon col={col} />}</span>
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {paged.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="text-center py-20 text-gray-400 text-sm">
-                      {search || filterSex || filterEmp
-                        ? 'No records match your search or filters.'
-                        : 'No PWD records yet. Click + Add PWD to begin.'}
-                    </td>
-                  </tr>
+                  <tr><td colSpan={8} className="text-center py-20 text-gray-400 text-sm">No records found.</td></tr>
                 ) : paged.map(r => {
                   const sel = selectedId === r.id
-                  const age = getAge(r)
+                  const isChecked = selectedIds.has(r.id)
                   return (
-                    <tr
-                      key={r.id}
-                      onClick={() => handleRowClick(r)}
-                      className={`cursor-pointer border-b border-gray-100 transition-colors ${sel ? 'bg-gray-500' : 'hover:bg-gray-50'}`}
-                    >
+                    <tr key={r.id} onClick={() => handleRowClick(r)} className={`cursor-pointer border-b border-gray-100 transition-colors ${sel ? 'bg-gray-500' : isChecked ? 'bg-yellow-50' : 'hover:bg-gray-50'}`}>
+                      <td className="px-3 py-2.5" onClick={e => e.stopPropagation()}>
+                        <input type="checkbox" checked={isChecked} onChange={() => toggleRowSelection(r.id)} className="rounded border-gray-300 text-[#948c00] focus:ring-[#948c00]" />
+                      </td>
                       <td className="px-3 py-2.5">
                         <div className="flex items-center gap-2">
-                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 overflow-hidden ${sel ? 'bg-white/20 text-white' : avColor(r)}`}>
-                            {r.photo_url ? (
-                              <img 
-                                src={r.photo_url} 
-                                alt="" 
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              initials(r)
-                            )}
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 overflow-hidden ${sel ? 'bg-white/20 text-white' : avColor(r)}`}>
+                            {r.photo_url ? <img src={r.photo_url} alt="" className="w-full h-full object-cover" /> : initials(r)}
                           </div>
-                          <div>
-                            <div className={`text-sm font-medium leading-tight ${sel ? 'text-white' : 'text-gray-900'}`}>
-                              {r.full_name_last}, {r.full_name_first}
-                            </div>
-                          </div>
+                          <div className={`text-sm font-medium leading-tight ${sel ? 'text-white' : 'text-gray-900'}`}>{r.full_name_last}, {r.full_name_first}</div>
                         </div>
                       </td>
-                      <td className={`px-3 py-2.5 text-xs font-mono tracking-tight ${sel ? 'text-white/90' : 'text-gray-500'}`}>
-                        {r.pwd_id_number ?? <span className="italic text-gray-300">—</span>}
-                      </td>
+                      <td className={`px-3 py-2.5 text-xs font-mono tracking-tight ${sel ? 'text-white/90' : 'text-gray-500'}`}>{r.pwd_id_number || '—'}</td>
                       <td className="px-3 py-2.5">
                         <div className="flex flex-wrap gap-1">
                           {(r.disability_type ?? []).slice(0, 1).map(d => (
-                            <span key={d} className={`text-xs font-semibold px-2 py-0.5 rounded-md ${sel ? 'bg-white/20 text-white' : 'bg-yellow-100 text-[#948c00]'}`}>
-                              {d}
-                            </span>
+                            <span key={d} className={`text-xs font-semibold px-2 py-0.5 rounded-md ${sel ? 'bg-white/20 text-white' : 'bg-yellow-100 text-[#948c00]'}`}>{d}</span>
                           ))}
-                          {(r.disability_type ?? []).length > 1 && (
-                            <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-md ${sel ? 'bg-white/20 text-white' : 'bg-yellow-100 text-[#948c00]'}`}>
-                              +{r.disability_type!.length - 1}
-                            </span>
-                          )}
                         </div>
                       </td>
-                      <td className={`px-3 py-2.5 text-sm ${sel ? 'text-white' : 'text-gray-600'}`}>
-                        {age ?? '—'}
-                      </td>
-                      <td className={`px-3 py-2.5 text-sm ${sel ? 'text-white' : 'text-gray-600'}`}>
-                        {r.sex ?? '—'}
-                      </td>
-                      <td className={`px-3 py-2.5 text-xs ${sel ? 'text-white/90' : 'text-gray-500'}`}>
-                        {r.employment_status ?? '—'}
-                      </td>
+                      <td className={`px-3 py-2.5 text-sm ${sel ? 'text-white' : 'text-gray-600'}`}>{getAge(r) ?? '—'}</td>
+                      <td className={`px-3 py-2.5 text-sm ${sel ? 'text-white' : 'text-gray-600'}`}>{r.sex ?? '—'}</td>
+                      <td className={`px-3 py-2.5 text-xs ${sel ? 'text-white/90' : 'text-gray-500'}`}>{r.employment_status ?? '—'}</td>
                       <td className={`px-3 py-2.5 text-xs ${sel ? 'text-white/90' : 'text-gray-400'}`}>
                         {new Date(r.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </td>
@@ -340,71 +356,24 @@ export default function DatabaseClient({ initialRecords, fetchError }: Props) {
               </tbody>
             </table>
           </div>
-
           {/* Pagination */}
           <div className="border-t border-gray-100 py-2.5 flex items-center justify-between flex-shrink-0">
             <span className="text-xs text-gray-400">
-              {processed.length === 0 ? '0 records' : `${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, processed.length)} of ${processed.length} records`}
+              {processed.length === 0 ? '0 records' : `${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, processed.length)} of ${processed.length}`}
             </span>
             <div className="flex gap-1.5 items-center">
-              <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-500 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-              >← Prev</button>
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-500 bg-white disabled:opacity-40">← Prev</button>
               <span className="text-xs text-gray-400 px-1">{page} / {totalPages}</span>
-              <button
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-500 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-              >Next →</button>
+              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-500 bg-white disabled:opacity-40">Next →</button>
             </div>
           </div>
         </div>
-
-        {/* ── Detail Panel ── */}
-        <DetailPanel
-          record={selected}
-          avColor={avColor}
-          initials={initials}
-          onEdit={r => { setEditRecord(r); setFormOpen(true) }}
-          onDelete={r => setDeleteRecord(r)}
-          onView={r => setViewRecord(r)}
-        />
+        <DetailPanel record={selected} avColor={avColor} initials={initials} onEdit={r => { setEditRecord(r); setFormOpen(true) }} onDelete={r => setDeleteRecord(r)} onView={r => setViewRecord(r)} />
       </div>
-
-      {/* ── Modals ── */}
-      {formOpen && (
-        <PwdFormModal
-          record={editRecord}
-          onClose={() => { setFormOpen(false); setEditRecord(null) }}
-          onSaved={handleSaved}
-        />
-      )}
-      {viewRecord && (
-        <ViewModal
-          record={viewRecord}
-          avColor={avColor}
-          initials={initials}
-          onClose={() => setViewRecord(null)}
-          onEdit={r => { setViewRecord(null); setEditRecord(r); setFormOpen(true) }}
-          onDelete={r => { setViewRecord(null); setDeleteRecord(r) }}
-        />
-      )}
-      {deleteRecord && (
-        <DeleteModal
-          record={deleteRecord}
-          onClose={() => setDeleteRecord(null)}
-          onConfirm={() => handleDelete(deleteRecord.id)}
-        />
-      )}
-
-      {/* ── Toast ── */}
-      {toast && (
-        <div className={`fixed bottom-5 left-1/2 -translate-x-1/2 px-5 py-2.5 rounded-full text-sm font-medium text-white shadow-lg z-[100] border-l-4 ${toast.type === 'error' ? 'bg-gray-900 border-red-500' : 'bg-gray-900 border-[#948c00]'}`}>
-          {toast.msg}
-        </div>
-      )}
+      {formOpen && <PwdFormModal record={editRecord} onClose={() => { setFormOpen(false); setEditRecord(null) }} onSaved={handleSaved} />}
+      {viewRecord && <ViewModal record={viewRecord} avColor={avColor} initials={initials} onClose={() => setViewRecord(null)} onEdit={r => { setViewRecord(null); setEditRecord(r); setFormOpen(true) }} onDelete={r => { setViewRecord(null); setDeleteRecord(r) }} />}
+      {deleteRecord && <DeleteModal record={deleteRecord} onClose={() => setDeleteRecord(null)} onConfirm={() => handleDelete(deleteRecord.id)} />}
+      {toast && <div className={`fixed bottom-5 left-1/2 -translate-x-1/2 px-5 py-2.5 rounded-full text-sm font-medium text-white shadow-lg z-[100] border-l-4 ${toast.type === 'error' ? 'bg-gray-900 border-red-500' : 'bg-gray-900 border-[#948c00]'}`}>{toast.msg}</div>}
     </div>
   )
 }

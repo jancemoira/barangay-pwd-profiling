@@ -9,6 +9,24 @@ import {
   EMPLOYMENT_STATUS_OPTIONS,
 } from '@/types'
 
+const EDUCATION_ATTAINMENT_OPTIONS = [
+  'No Formal Education',
+  'Elementary Level (Undergraduate)',
+  'Elementary Graduate',
+  'Junior High School Level (Undergraduate)',
+  'Junior High School Graduate',
+  'Senior High School Level (Undergraduate)',
+  'Senior High School Graduate',
+  'Vocational / Technical Course Level',
+  'Vocational / Technical Course Graduate',
+  'College Level (Undergraduate)',
+  'College Graduate',
+  'Postgraduate Level (Master\'s)',
+  'Master\'s Degree Graduate',
+  'Doctorate Level (PhD, EdD, etc.)',
+  'Doctorate Degree Graduate'
+]
+
 interface Props {
   record: PwdProfile | null
   onClose: () => void
@@ -71,11 +89,10 @@ export default function PwdFormModal({ record, onClose, onSaved }: Props) {
   const [suffix, setSuffix] = useState(record?.suffix ?? '') 
   const [pwdId, setPwdId] = useState(record?.pwd_id_number ?? '')
   const [dob, setDob] = useState(record?.date_of_birth ?? '')
-  const [age, setAge] = useState(record?.age ? String(record.age) : '')
   const [birthPlace, setBirthPlace] = useState(record?.birth_place ?? '')
   const [sex, setSex] = useState<string>(record?.sex ?? '')
   const [civilStatus, setCivilStatus] = useState(record?.civil_status ?? '')
-  const [nationality, setNationality] = useState(record?.nationality ?? 'Filipino')
+  const [nationality, setNationality] = useState(record?.nationality ?? '')
   const [religion, setReligion] = useState(record?.religion ?? '')
 
   // II. Address & Contact
@@ -107,6 +124,17 @@ export default function PwdFormModal({ record, onClose, onSaved }: Props) {
 
   // ── Helper Functions ──────────────────────────────────────────
   
+  function calculateAge(dateString: string): number {
+    if (!dateString) return 0
+    const today = new Date()
+    const birthDate = new Date(dateString)
+    let age = today.getFullYear() - birthDate.getFullYear()
+    const monthDiff = today.getMonth() - birthDate.getMonth()
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--
+    }
+    return age
+  }
 
   async function handlePhotoUpload(file: File) {
     try {
@@ -143,8 +171,9 @@ export default function PwdFormModal({ record, onClose, onSaved }: Props) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     
-    if (!lastName.trim() || !firstName.trim() || !pwdId.trim() || !age.trim()) {
-      setError('Please fill in all mandatory fields (Name, PWD ID, and Age).')
+    const calculatedAge = calculateAge(dob)
+    if (!lastName.trim() || !firstName.trim() || !pwdId.trim() || !dob.trim() || calculatedAge === 0) {
+      setError('Please fill in all mandatory fields (Name, PWD ID, and Date of Birth).')
       return
     }
 
@@ -158,7 +187,7 @@ export default function PwdFormModal({ record, onClose, onSaved }: Props) {
       suffix: suffix.trim() || null,
       pwd_id_number: pwdId.trim(),
       date_of_birth: dob || null,
-      age: parseInt(age),
+      age: calculatedAge,
       birth_place: birthPlace,
       sex: sex || null,
       civil_status: civilStatus || null,
@@ -246,11 +275,11 @@ export default function PwdFormModal({ record, onClose, onSaved }: Props) {
               <div className="col-span-2"><Label>Last Name *</Label><Input value={lastName} onChange={setLastName} placeholder="Last Name" required /></div>
               <div className="col-span-2"><Label>First Name *</Label><Input value={firstName} onChange={setFirstName} placeholder="First Name" required /></div>
               <div className="col-span-1"><Label>Middle Name</Label><Input value={middleName} onChange={setMiddleName} placeholder="Middle Na..." /></div>
-              <div className="col-span-1"><Label>Suffix</Label><Input value={suffix} onChange={setSuffix} placeholder="Jr/III" /></div>
+              <div className="col-span-1"><Label>Suffix</Label><Input value={suffix} onChange={setSuffix} placeholder="eg. Jr/III" /></div>
               
               <div className="col-span-3"><Label>PWD ID Number *</Label><Input value={pwdId} onChange={setPwdId} required placeholder="00-0000-000-0000000" /></div>
               <div className="col-span-2"><Label>Date of Birth</Label><Input type="date" value={dob} onChange={setDob} /></div>
-              <div className="col-span-1"><Label>Age *</Label><Input type="number" value={age} onChange={setAge} placeholder="20 y.o" required /></div>
+              <div className="col-span-1"><Label>Age *</Label><Input type="number" value={calculateAge(dob)} readOnly /></div>
               
               <div className="col-span-3"><Label>Birth Place</Label><Input value={birthPlace} onChange={setBirthPlace} placeholder="e.g., Bacolod City"/></div>
               <div className="col-span-3"><Label>Sex</Label><RadioGroup name="sex" options={['Male', 'Female']} value={sex} onChange={setSex} /></div>
@@ -342,12 +371,20 @@ export default function PwdFormModal({ record, onClose, onSaved }: Props) {
           <section>
             <SectionTitle num="V" title="Educational Background" />
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Highest Educational Attainment</Label><Input value={attainment} onChange={setAttainment} placeholder="e.g., Bachelor's Degree" /></div>
+              <div>
+                <Label>Highest Educational Attainment</Label>
+                <select value={attainment} onChange={e => setAttainment(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:outline-none focus:border-[#948c00] focus:bg-white transition-colors">
+                  <option value="">Select...</option>
+                  {EDUCATION_ATTAINMENT_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </div>
               <div>
                 <Label>Currently Studying?</Label>
                 <RadioGroup name="studying" options={['Yes', 'No']} value={isStudying} onChange={setIsStudying} />
               </div>
-              <div className="col-span-2"><Label>School Name (If applicable)</Label><Input value={schoolName} onChange={setSchoolName} placeholder="e.g., University of St. La Salle" /></div>
+              {isStudying === 'Yes' && (
+                <div className="col-span-2"><Label>School Name (If applicable)</Label><Input value={schoolName} onChange={setSchoolName} placeholder="e.g., University of St. La Salle" /></div>
+              )}
             </div>
           </section>
 
@@ -389,7 +426,7 @@ export default function PwdFormModal({ record, onClose, onSaved }: Props) {
                       <td className="p-2 border text-center">{i + 1}</td>
                       <td className="p-1 border"><input className="w-full p-1" value={m.name} onChange={e => updateFamilyMember(i, 'name', e.target.value)} /></td>
                       <td className="p-1 border"><input type="date" className="w-full p-1" value={m.dob} onChange={e => updateFamilyMember(i, 'dob', e.target.value)} /></td>
-                      <td className="p-1 border"><input type="number" className="w-full p-1" value={m.age} onChange={e => updateFamilyMember(i, 'age', e.target.value)} /></td>
+                      <td className="p-1 border"><input type="number" className="w-full p-1 bg-gray-100 text-gray-500 cursor-not-allowed" value={calculateAge(m.dob)} readOnly /></td>
                       <td className="p-1 border"><input className="w-full p-1" value={m.status} onChange={e => updateFamilyMember(i, 'status', e.target.value)} /></td>
                       <td className="p-1 border"><input className="w-full p-1" value={m.relationship} onChange={e => updateFamilyMember(i, 'relationship', e.target.value)} /></td>
                       <td className="p-1 border text-center">
